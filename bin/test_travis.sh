@@ -32,6 +32,8 @@ EOF
         bin/doctest doc/
     elif [[ "${TEST_SLOW}" == "true" ]]; then
         cat << EOF | python
+# Pep8 tests
+pep8 --ignore=E501,E502,E121,E122,E124,E123,E125,E126,E127,E128,E129,E131,E262,E265,E226 ./sympy/
 import sympy
 if not sympy.test(split='${SPLIT}', slow=True, timeout=180):
     # Travis times out if no activity is seen for 10 minutes. It also times
