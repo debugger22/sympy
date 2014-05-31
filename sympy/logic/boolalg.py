@@ -3,8 +3,8 @@ Boolean algebra module for SymPy
 """
 from __future__ import print_function, division
 
-from collections import defaultdict
-from itertools import product
+from collections import Counter,defaultdict
+from itertools import combinations, product
 
 from sympy.core.basic import Basic
 from sympy.core.cache import cacheit
@@ -53,6 +53,11 @@ class Boolean(Basic):
         return Xor(self, other)
 
     __rxor__ = __xor__
+
+    def equals(self, other):
+        from sympy.logic.inference import satisfiable
+        return not satisfiable(Not(Equivalent(self, other)))
+
 
 # Developer note: There is liable to be some confusion as to when True should
 # be used and when S.true should be used in various contexts throughout SymPy.
@@ -405,6 +410,8 @@ class Not(BooleanFunction):
     def eval(cls, arg):
         if isinstance(arg, Number) or arg in (True, False):
             return false if arg else true
+        if arg.is_Not:
+            return arg.args[0]
         # apply De Morgan Rules
         if arg.func is And:
             return Or(*[Not(a) for a in arg.args])
@@ -461,7 +468,7 @@ class Xor(BooleanFunction):
     False
 
     >>> x ^ y
-    Or(And(Not(x), y), And(Not(y), x))
+    Xor(x, y)
 
     Notes
     =====
@@ -475,41 +482,21 @@ class Xor(BooleanFunction):
     x
 
     """
-    def __new__(cls, *args, **options):
-        args = [_sympify(arg) for arg in args]
-
-        argset = set(args)
-        truecount = 0
-        for x in args:
-            if isinstance(x, Number) or x in [True, False]: # Includes 0, 1
-                argset.discard(x)
-                if x:
-                    truecount += 1
-        if len(argset) < 1:
-            return true if truecount % 2 != 0 else false
-        if truecount % 2 != 0:
-            return Not(Xor(*argset))
-        _args = frozenset(argset)
-        obj = super(Xor, cls).__new__(cls, *_args, **options)
-        if isinstance(obj, Xor):
-            obj._argset = _args
-        return obj
+    def __new__(cls, *args, **kwargs):
+        args = Counter(args)
+        args = [arg for arg in args if arg and args[arg]%2]
+        if not args:
+            return false
+        if len(args) == 1:
+            return sympify(args[0])
+        if len(args) == 2 and True in args:
+            return ~args[1] if args[0] == True else ~args[0]
+        return super(Xor, cls).__new__(cls, *args, **kwargs)
 
     @property
     @cacheit
     def args(self):
-        return tuple(ordered(self._argset))
-
-    @classmethod
-    def eval(cls, *args):
-        if not args:
-            return false
-        args = list(args)
-        A = args.pop()
-        while args:
-            B = args.pop()
-            A = Or(And(A, Not(B)), And(Not(A), B))
-        return A
+        return tuple(ordered(self._args))
 
 
 class Nand(BooleanFunction):
@@ -691,6 +678,7 @@ class Equivalent(BooleanFunction):
     def args(self):
         return tuple(ordered(self._argset))
 
+
 class ITE(BooleanFunction):
     """
     If then else clause.
@@ -708,15 +696,23 @@ class ITE(BooleanFunction):
     >>> ITE(Or(True, False), And(True, True), Xor(True, True))
     True
     >>> ITE(x, y, z)
-    Or(And(Not(x), z), And(x, y))
+    ITE(x, y, z)
+    >>> ITE(True, x, y)
+    x
+    >>> ITE(False, x, y)
+    y
+    >>> ITE(x, y, y)
+    y
     """
     @classmethod
     def eval(cls, *args):
-        args = list(args)
-        if len(args) == 3:
-            return Or(And(args[0], args[1]), And(Not(args[0]), args[2]))
-        raise ValueError("ITE expects 3 arguments, but got %d: %s" %
-                         (len(args), str(args)))
+        a, b, c = args
+        if a == True:
+            return b
+        if a == False:
+            return c
+        if b == c:
+            return b
 
 ### end class definitions. Some useful methods
 
@@ -965,6 +961,105 @@ def _is_form(expr, function1, function2):
     return True
 
 
+def is_nnf(expr):
+    pass
+
+
+def to_nnf(expr):
+    """
+    Returns an equivalent expr consisting of only And, Or and Not
+    """
+    from inference import is_literal
+
+    expr = sympify(expr)
+    if is_literal(expr):
+        return expr
+
+    neg = False
+    if expr.is_Not:
+        expr = expr.args[0]
+        neg = True
+    stack = [{'func':expr.func, 'neg':neg, 'oldArgs':list(expr.args), 'newArgs':[]}]
+
+    while True:
+        top = stack[-1]
+        if top['neg'] or top['func'] not in (And, Or):
+            if top['newArgs']:
+                raise ValueError()
+
+            if top['func'] in (And, Or):
+                top['func'] = And if top['func'] is Or else Or
+                top['oldArgs'] = [~arg for arg in top['oldArgs']]
+
+            elif top['func'] is Implies:
+                a, b = top['oldArgs']
+                if top['neg']:
+                    top['func'] = And
+                    top['oldArgs'] = [a, ~b]
+                else:
+                    top['func'] = Or
+                    top['oldArgs'] = [~a, b]
+
+            elif top['func'] is Equivalent:
+                top['func'] = And
+                args = top['oldArgs']
+                top['oldArgs'] = []
+                for a, b in zip(args, args[1:]):
+                    top['oldArgs'].append(~a | b)
+                top['oldArgs'].append(~args[-1] | args[0])
+
+            elif top['func'] is Xor:
+                start = 0
+                end = len(top['oldArgs']) + 1
+
+                if top['neg']:
+                    start += 1
+                    end -= 1
+
+                args = []
+                for i in xrange(start, end, 2):
+                    for negated in combinations(top['oldArgs'], i):
+                        args.append([])
+                        for arg in top['oldArgs']:
+                            if arg in negated:
+                                args[-1].append(~arg)
+                            else:
+                                args[-1].append(arg)
+
+                top['func'] = And
+                top['oldArgs'] = [Or(*arg) for arg in args]
+
+            elif top['func'] is ITE:
+                top['func'] = And
+                a, b, c = top['oldArgs']
+                top['oldArgs'] = [~a | b, a | c]
+
+            else:
+                raise ValueError()
+
+            top['neg'] = False
+
+        if top['oldArgs']:
+            expr = top['oldArgs'].pop()
+            if is_literal(expr):
+                top['newArgs'].append(expr)
+            else:
+                neg = False
+                if expr.is_Not:
+                    expr = expr.args[0]
+                    neg = True
+                stack.append({'func':expr.func, 'neg':neg, 'oldArgs':list(expr.args), 'newArgs':[]})
+        else:
+            stack.pop()
+            if top['neg']:
+                raise ValueError()
+            expr = top['func'](*top['newArgs'])
+            if stack:
+                stack[-1]['newArgs'].append(expr)
+            else:
+                return expr
+
+
 def eliminate_implications(expr):
     """
     Change >>, <<, and Equivalent into &, |, and ~. That is, return an
@@ -982,18 +1077,7 @@ def eliminate_implications(expr):
     >>> eliminate_implications(Equivalent(A, B))
     And(Or(A, Not(B)), Or(B, Not(A)))
     """
-    expr = sympify(expr)
-    if expr.is_Atom:
-        return expr  # (Atoms are unchanged.)
-    args = list(map(eliminate_implications, expr.args))
-    if expr.func is Implies:
-        a, b = args[0], args[-1]
-        return (~a) | b
-    elif expr.func is Equivalent:
-        a, b = args[0], args[-1]
-        return (a | Not(b)) & (b | Not(a))
-    else:
-        return expr.func(*args)
+    return to_nnf(expr)
 
 
 @deprecated(
