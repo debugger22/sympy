@@ -12,7 +12,7 @@ __all__ = []
 #    "from sympy.physics.optics import *" is done.
 
 from . import waves
-from .waves import TWave
+from .waves import TWave, Interference
 __all__.extend(waves.__all__)
 
 

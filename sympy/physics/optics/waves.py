@@ -4,16 +4,18 @@ This module has all the classes and functions related to waves in optics.
 **Contains**
 
 * TWave
+* Interference
 """
 
 from __future__ import print_function, division
 
-__all__ = ['TWave']
+__all__ = ['TWave', 'Interference']
 
 from sympy import (sympify, pi, sin, cos, sqrt, simplify, Symbol, S, C, I,
     symbols, Derivative)
 from sympy.core.expr import Expr
 from sympy.physics.units import c
+from sympy.geometry import Point, Line
 
 
 class TWave(Expr):
@@ -280,3 +282,113 @@ class TWave(Expr):
         exp = C.exp
         return self._amplitude*exp(I*(self.wavenumber*Symbol('x')
             - self.angular_velocity*Symbol('t') + self._phase))
+
+
+class Interference(object):
+
+    """
+    Interference of two transverse waves.
+    Currently it implements only YDSE(2 slits).
+
+    Assumptions
+    ===========
+
+    .. [1] Slit plane is parallel to the screen.
+
+    Parameters
+    ==========
+
+    wave : TWave
+        A transverse wave.
+    S : Point (2D), tuple, list
+        Source point
+    S1 : Point (2D), tuple, list
+        Point corresponding to slit 1
+    S2 : Point (2D), tuple, list
+        Point corresponding to slit 2
+    O : Point, tuple, list (2D)
+        Center of the screen
+    """
+
+    def __init__(self, wave, S, S1, S2, O):
+
+        if not isinstance(wave, TWave):
+            raise TypeError('Inappropriate argument type. wave has to be an instance of TWave.')
+        else:
+            self.wave = wave
+
+        if not isinstance(S, Point):
+            if isinstance(S, tuple) or isinstance(S, list):
+                if len(S) != 2:
+                    raise ValueError("Only 2D points are supported.")
+                self.S = Point(S)
+            else:
+                raise TypeError("S can be only Point, tuple or list")
+        if not isinstance(S1, Point):
+            if isinstance(S1, tuple) or isinstance(S1, list):
+                if len(S1) != 2:
+                    raise ValueError("Only 2D points are supported.")
+                self.S1 = Point(S1)
+            else:
+                raise TypeError("S1 can be only Point, tuple or list")
+        if not isinstance(S2, Point):
+            if isinstance(S2, tuple) or isinstance(S2, list):
+                if len(S2) != 2:
+                    raise ValueError("Only 2D points are supported.")
+                self.S2 = Point(S2)
+            else:
+                raise TypeError("S2 can be only Point, tuple or list")
+        if not isinstance(O, Point):
+            if isinstance(O, tuple) or isinstance(O, list):
+                if len(O) != 2:
+                    raise ValueError("Only 2D points are supported.")
+                self.O = Point(O)
+            else:
+                raise TypeError("O can be only Point, tuple or list")
+
+            self.slit_line = Line(S1, S2)
+            print(self.slit_line)
+            print(self.O)
+            self.d = self.S1.distance(S2)
+            self.D = self.slit_line.distance(self.O)
+            self.screen = Line(O, slope=self.slit_line.slope)
+
+    @property
+    def fringe_width(self):
+        """
+        Returns fringe width of the interference pattern.
+        This is also the distance between two consecutive
+        dark or bright fringes.
+
+        Examples
+        ========
+
+        >>> from sympy import symbols
+        >>> from sympy.physics.optics import TWave, Interference
+        >>> A, f, phi = symbols('A, f, phi')
+        >>> w = TWave(A, f, phi)
+        >>> Interference(w).fringe_width
+        """
+        return self.wave.wavelength*self.D/self.d
+
+    def intensity_distribution(self, p):
+        """
+        Calculates intensity distribution at a point on the screen.
+        This assumes that the distances S1P and S2P are very large
+        in comparison to the distance S1S2.
+
+        Examples
+        ========
+
+        >>> from sympy import symbols
+        >>> from sympy.physics.optics import TWave, Interference
+        >>> A, f, phi = symbols('A, f, phi')
+        >>> w = TWave(A, f, phi)
+        >>> model = Interference(w, S=(-4, 0), S1=(-2, 2), S2=(-2, -2), O=(0, 0))
+        >>> model.intensity_distribution(Point(0, 4))
+
+        """
+        p = Point(point)
+        if self.screen.contains(p):
+            S_1p = self.S1.distance(p)
+            S_2p = self.S2.distance(p)
