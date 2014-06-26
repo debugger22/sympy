@@ -5,7 +5,7 @@ env:
   - SPLIT="1/2"
   - SPLIT="2/2"
   global:
-    secure: <access_token>
+    secure: S61+Yr7iVw4IfqRYG36Go6gwD3DK88wZZFv4HECwkWOUCL091bjGlJ5rQInZ2QtixA6ralc/YybnTna9RU5GNawpFj1OGzhPbliQyRu5uxqt8XtmKAeq7iu1JKPt3quQ/NIikHIAqT3akun/qQcOMuWdQHiDIW2l4FYmiAmSxMg=
 python:
   - 2.6
   - 2.7
