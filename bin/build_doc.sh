@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 
-if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
+if [ "$TRAVIS_PULL_REQUEST" == "true" ]; then
 
         cd doc
         make clean
@@ -15,10 +15,10 @@ if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
 
         cd gh-pages
         git remote rm origin
-        git remote add origin https://${GH_TOKEN}@github.com/sympy/sympy_doc.git
+        git remote add origin https://${GH_TOKEN}@github.com/sympy/sympy_doc.git > /dev/null
         rm -rf dev/
         cp -R ../sympy/doc/_build/html dev/
-        git add -A dev
+        git add -A dev/
         ./generate_indexes.py
 
         git commit -am "Update dev doc after building $TRAVIS_BUILD_NUMBER"
