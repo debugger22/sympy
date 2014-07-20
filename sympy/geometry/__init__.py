@@ -20,6 +20,7 @@ from sympy.geometry.point import Point
 from sympy.geometry.point3d import Point3D
 from sympy.geometry.line import Line, Ray, Segment
 from sympy.geometry.line3d import Line3D, Segment3D, Ray3D
+from sympy.geometry.hyperbola import Hyperbola
 from sympy.geometry.plane import Plane
 from sympy.geometry.ellipse import Ellipse, Circle
 from sympy.geometry.polygon import Polygon, RegularPolygon, Triangle, rad, deg
