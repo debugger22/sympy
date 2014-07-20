@@ -20,7 +20,6 @@ from sympy.utilities.misc import filldedent
 from .entity import GeometryEntity
 from .point import Point
 from .line import LinearEntity, Line
-from .ellipse import Ellipse, Circle
 from .util import _symbol, idiff
 from sympy.mpmath import findroot as nroot
 
@@ -558,6 +557,7 @@ class Hyperbola(GeometryEntity):
         >>> e.intersection(Hyperbola(Point(-1, 0), 3, 4))
         []
         """
+        from .ellipse import Ellipse, Circle
         if isinstance(o, Point):
             if o in self:
                 return [o]
