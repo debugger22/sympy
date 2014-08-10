@@ -420,3 +420,20 @@ def lens_formula(focal_length=None, u=None, v=None):
         if focal_length == oo:
             return Limit(u*_f/(u + _f), _f, oo).doit()
         return u*focal_length/(u + focal_length)
+
+
+def fraunhofer_diffraction(wavelength, aperture_size, distance):
+    r"""
+    Returns differaction angle.
+
+    This function assumes that :math:`\frac{W^{2}}{L*\lambda} << 1`
+    where :math: `W` is aperture width, :math: `L` is distance from
+    the aperture and :math: `\lambda` is the wavelength.
+
+    References
+    ==========
+
+    .. [1] http://en.wikipedia.org/wiki/Fraunhofer_diffraction
+
+    """
+    
