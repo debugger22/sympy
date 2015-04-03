@@ -1268,9 +1268,6 @@ class Basic(with_metaclass(ManagedProperties)):
 
         try:
             query = sympify(query)
-        except SympifyError:
-            pass
-        try:
             value = sympify(value)
         except SympifyError:
             pass
