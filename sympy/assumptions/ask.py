@@ -386,7 +386,8 @@ def get_known_facts():
         Implies(Q.positive, ~Q.nonpositive),
         Equivalent(Q.nonnegative | Q.negative, Q.real),
         Implies(Q.negative, ~Q.nonnegative),
-        Equivalent(Q.zero, Q.real & ~Q.nonzero),
+        Equivalent(Q.zero | Q.nonzero, Q.real),
+        Implies(Q.zero, ~Q.nonzero),
         Implies(Q.zero, Q.even),
 
         Implies(Q.orthogonal, Q.positive_definite),
