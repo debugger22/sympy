@@ -1053,8 +1053,8 @@ def to_cnf(expr, simplify=False):
         return simplify_logic(expr, 'cnf', True)
 
     # Don't convert unless we have to
-    if is_cnf(expr):
-        return expr
+    #if is_cnf(expr):
+    #    return expr
 
     expr = eliminate_implications(expr)
     return distribute_and_over_or(expr)
